@@ -62,7 +62,6 @@ cc_defaults {
         "libincfs",
         "libhidlbase",
         "libkeymint_support",
-        "libkeyutils",
         "liblog",
         "liblogwrap",
         "libselinux",
@@ -166,9 +165,6 @@ cc_library_static {
             cppflags: ["-D__ANDROID_DEBUGGABLE__"],
         },
     },
-    whole_static_libs: [
-        "libc++fs",
-    ],
 }
 
 cc_binary {

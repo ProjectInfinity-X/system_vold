@@ -22,6 +22,7 @@ import android.os.IVoldMountCallback;
 import android.os.IVoldTaskListener;
 
 /** {@hide} */
+@SensitiveData
 interface IVold {
     void setListener(IVoldListener listener);
 
@@ -66,6 +67,8 @@ interface IVold {
     void fstrim(int fstrimFlags, IVoldTaskListener listener);
     void runIdleMaint(boolean needGC, IVoldTaskListener listener);
     void abortIdleMaint(IVoldTaskListener listener);
+    // Returns the amount of storage lifetime used, as a percentage.
+    // (eg, 10 indicates 10% of lifetime used), or -1 on failure.
     int getStorageLifeTime();
     void setGCUrgentPace(int neededSegments, int minSegmentThreshold,
                          float dirtyReclaimRate, float reclaimWeight,
@@ -80,22 +83,21 @@ interface IVold {
     void fbeEnable();
 
     void initUser0();
-    void mountFstab(@utf8InCpp String blkDevice, @utf8InCpp String mountPoint, @utf8InCpp String zonedDevice);
-    void encryptFstab(@utf8InCpp String blkDevice, @utf8InCpp String mountPoint, boolean shouldFormat, @utf8InCpp String fsType, @utf8InCpp String zonedDevice);
+    void mountFstab(@utf8InCpp String blkDevice, @utf8InCpp String mountPoint, boolean isZoned, in @utf8InCpp String[] userDevices);
+    void encryptFstab(@utf8InCpp String blkDevice, @utf8InCpp String mountPoint, boolean shouldFormat, @utf8InCpp String fsType, boolean isZoned, in @utf8InCpp String[] userDevices);
 
     void setStorageBindingSeed(in byte[] seed);
 
-    void createUserStorageKeys(int userId, int userSerial, boolean ephemeral);
+    void createUserStorageKeys(int userId, boolean ephemeral);
     void destroyUserStorageKeys(int userId);
 
-    void setCeStorageProtection(int userId, @utf8InCpp String secret);
+    void setCeStorageProtection(int userId, in byte[] secret);
 
     int[] getUnlockedUsers();
-    void unlockCeStorage(int userId, int userSerial, @utf8InCpp String secret);
+    void unlockCeStorage(int userId, in byte[] secret);
     void lockCeStorage(int userId);
 
-    void prepareUserStorage(@nullable @utf8InCpp String uuid, int userId, int userSerial,
-                            int storageFlags);
+    void prepareUserStorage(@nullable @utf8InCpp String uuid, int userId, int storageFlags);
     void destroyUserStorage(@nullable @utf8InCpp String uuid, int userId, int storageFlags);
 
     void prepareSandboxForApp(in @utf8InCpp String packageName, int appId,
@@ -135,6 +137,11 @@ interface IVold {
     void destroyDsuMetadataKey(@utf8InCpp String dsuSlot);
 
     long getStorageSize();
+
+    // Returns the remaining storage lifetime as a percentage, rounded up as
+    // needed when the underlying hardware reports low precision. Returns -1
+    // on failure.
+    int getStorageRemainingLifetime();
 
     const int FSTRIM_FLAG_DEEP_TRIM = 1;
 

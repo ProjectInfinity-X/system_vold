@@ -504,6 +504,14 @@ binder::Status VoldNativeService::getStorageLifeTime(int32_t* _aidl_return) {
     return Ok();
 }
 
+binder::Status VoldNativeService::getStorageRemainingLifetime(int32_t* _aidl_return) {
+    ENFORCE_SYSTEM_OR_ROOT;
+    ACQUIRE_LOCK;
+
+    *_aidl_return = GetStorageRemainingLifetime();
+    return Ok();
+}
+
 binder::Status VoldNativeService::setGCUrgentPace(int32_t neededSegments,
                                                   int32_t minSegmentThreshold,
                                                   float dirtyReclaimRate, float reclaimWeight,
@@ -580,24 +588,24 @@ binder::Status VoldNativeService::initUser0() {
 }
 
 binder::Status VoldNativeService::mountFstab(const std::string& blkDevice,
-                                             const std::string& mountPoint,
-                                             const std::string& zonedDevice) {
+                                             const std::string& mountPoint, bool isZoned,
+                                             const std::vector<std::string>& userDevices) {
     ENFORCE_SYSTEM_OR_ROOT;
     ACQUIRE_LOCK;
 
     return translateBool(fscrypt_mount_metadata_encrypted(blkDevice, mountPoint, false, false,
-                                                          "null", zonedDevice));
+                                                          "null", isZoned, userDevices));
 }
 
 binder::Status VoldNativeService::encryptFstab(const std::string& blkDevice,
                                                const std::string& mountPoint, bool shouldFormat,
-                                               const std::string& fsType,
-                                               const std::string& zonedDevice) {
+                                               const std::string& fsType, bool isZoned,
+                                               const std::vector<std::string>& userDevices) {
     ENFORCE_SYSTEM_OR_ROOT;
     ACQUIRE_LOCK;
 
     return translateBool(fscrypt_mount_metadata_encrypted(blkDevice, mountPoint, true, shouldFormat,
-                                                          fsType, zonedDevice));
+                                                          fsType, isZoned, userDevices));
 }
 
 binder::Status VoldNativeService::setStorageBindingSeed(const std::vector<uint8_t>& seed) {
@@ -607,12 +615,11 @@ binder::Status VoldNativeService::setStorageBindingSeed(const std::vector<uint8_
     return translateBool(setKeyStorageBindingSeed(seed));
 }
 
-binder::Status VoldNativeService::createUserStorageKeys(int32_t userId, int32_t userSerial,
-                                                        bool ephemeral) {
+binder::Status VoldNativeService::createUserStorageKeys(int32_t userId, bool ephemeral) {
     ENFORCE_SYSTEM_OR_ROOT;
     ACQUIRE_CRYPT_LOCK;
 
-    return translateBool(fscrypt_create_user_keys(userId, userSerial, ephemeral));
+    return translateBool(fscrypt_create_user_keys(userId, ephemeral));
 }
 
 binder::Status VoldNativeService::destroyUserStorageKeys(int32_t userId) {
@@ -623,7 +630,7 @@ binder::Status VoldNativeService::destroyUserStorageKeys(int32_t userId) {
 }
 
 binder::Status VoldNativeService::setCeStorageProtection(int32_t userId,
-                                                         const std::string& secret) {
+                                                         const std::vector<uint8_t>& secret) {
     ENFORCE_SYSTEM_OR_ROOT;
     ACQUIRE_CRYPT_LOCK;
 
@@ -638,12 +645,12 @@ binder::Status VoldNativeService::getUnlockedUsers(std::vector<int>* _aidl_retur
     return Ok();
 }
 
-binder::Status VoldNativeService::unlockCeStorage(int32_t userId, int32_t userSerial,
-                                                  const std::string& secret) {
+binder::Status VoldNativeService::unlockCeStorage(int32_t userId,
+                                                  const std::vector<uint8_t>& secret) {
     ENFORCE_SYSTEM_OR_ROOT;
     ACQUIRE_CRYPT_LOCK;
 
-    return translateBool(fscrypt_unlock_ce_storage(userId, userSerial, secret));
+    return translateBool(fscrypt_unlock_ce_storage(userId, secret));
 }
 
 binder::Status VoldNativeService::lockCeStorage(int32_t userId) {
@@ -654,15 +661,14 @@ binder::Status VoldNativeService::lockCeStorage(int32_t userId) {
 }
 
 binder::Status VoldNativeService::prepareUserStorage(const std::optional<std::string>& uuid,
-                                                     int32_t userId, int32_t userSerial,
-                                                     int32_t flags) {
+                                                     int32_t userId, int32_t flags) {
     ENFORCE_SYSTEM_OR_ROOT;
     std::string empty_string = "";
     auto uuid_ = uuid ? *uuid : empty_string;
     CHECK_ARGUMENT_HEX(uuid_);
 
     ACQUIRE_CRYPT_LOCK;
-    return translateBool(fscrypt_prepare_user_storage(uuid_, userId, userSerial, flags));
+    return translateBool(fscrypt_prepare_user_storage(uuid_, userId, flags));
 }
 
 binder::Status VoldNativeService::destroyUserStorage(const std::optional<std::string>& uuid,
