@@ -1857,6 +1857,15 @@ status_t UnmountUserFuseEnhanced(userid_t user_id, const std::string& absolute_l
 }
 
 status_t PrepareAndroidDirs(const std::string& volumeRoot) {
+    // Ensure volume root (/data/media/0) has correct ownership and permissions.
+    // When userdata is formatted or wiped in recovery, volumeRoot may be created
+    // with root:root 0770. If this is not fixed, FUSE projects root:root onto
+    // /storage/emulated/0, preventing non-root apps and services from accessing
+    // internal storage.
+    if (fs_prepare_dir(volumeRoot.c_str(), 02770, AID_MEDIA_RW, AID_MEDIA_RW) != 0) {
+        PLOG(WARNING) << "Failed to prepare volume root " << volumeRoot;
+    }
+
     std::string androidDir = volumeRoot + kAndroidDir;
     std::string androidDataDir = volumeRoot + kAppDataDir;
     std::string androidObbDir = volumeRoot + kAppObbDir;
